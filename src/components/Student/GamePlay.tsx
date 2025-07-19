@@ -20,6 +20,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
   const resultsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [cachedQuizData, setCachedQuizData] = useState<any>(null); // Cache quiz data
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean>(false); // Track answer correctness
+  const [totalCorrectAnswers, setTotalCorrectAnswers] = useState(0); // Track total correct answers
   const [finalLeaderboard, setFinalLeaderboard] = useState<any[]>([]);
   const [newBadges, setNewBadges] = useState<any[]>([]);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
@@ -81,6 +82,35 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
           if (leaderboardData) {
             setFinalLeaderboard(leaderboardData);
           }
+          
+          // Check for perfect score badge
+          const userId = session.userId || session.user_id;
+          if (userId && cachedQuizData) {
+            const totalQuestions = cachedQuizData.questions?.length || 0;
+            const isPerfectScore = totalQuestions > 0 && totalCorrectAnswers === totalQuestions;
+            
+            console.log('Perfect score check (first location):', {
+              totalQuestions,
+              totalCorrectAnswers,
+              isPerfectScore,
+              userId
+            });
+            
+            if (isPerfectScore) {
+              console.log('Perfect score achieved, checking badge for user:', userId);
+              checkAndAwardBadges(userId, {
+                gameCompleted: true,
+                perfectScore: true,
+                totalGames: totalGamesPlayed + 1
+              }).then(badges => {
+                console.log('Perfect score badges returned:', badges);
+                if (badges.length > 0) {
+                  setNewBadges(prev => [...prev, ...badges]);
+                }
+              });
+            }
+          }
+          
           setGameState('ended');
         }
         
@@ -154,8 +184,14 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
         const userId = session.userId || session.user_id;
         if (userId && cachedQuizData) {
           const totalQuestions = cachedQuizData.questions?.length || 0;
-          const correctAnswers = score > 0 ? Math.round(score / (cachedQuizData.questions?.[0]?.points || 100)) : 0;
-          const isPerfectScore = totalQuestions > 0 && correctAnswers === totalQuestions;
+          const isPerfectScore = totalQuestions > 0 && totalCorrectAnswers === totalQuestions;
+          
+          console.log('Perfect score check (second location):', {
+            totalQuestions,
+            totalCorrectAnswers,
+            isPerfectScore,
+            userId
+          });
           
           if (isPerfectScore) {
             console.log('Perfect score achieved, checking badge for user:', userId);
@@ -276,6 +312,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
       if (isCorrect) {
         setScore(newScore);
         setStreak(prev => prev + 1);
+        setTotalCorrectAnswers(prev => prev + 1); // Increment correct answers counter
       } else {
         setStreak(0);
       }
