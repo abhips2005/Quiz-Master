@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Play, Edit3, Trash2, Users, BarChart3, Trophy, Clock } from 'lucide-react';
-import { getQuizzes, getQuizById, createGameSession } from '../../lib/supabase';
+import { getQuizzes, getQuizById, createGameSession, deleteQuiz } from '../../lib/supabase';
 import { Quiz } from '../../types';
 import { QuizEditor } from './QuizEditor';
 import { GameLobby } from './GameLobby';
@@ -72,6 +72,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId }) =>
     setShowEditor(false);
     setSelectedQuiz(null);
     loadQuizzes();
+  };
+
+  const handleDeleteQuiz = async (quiz: Quiz) => {
+    if (window.confirm(`Are you sure you want to delete "${quiz.title}"? This action cannot be undone.`)) {
+      try {
+        const { error } = await deleteQuiz(quiz.id, userId);
+        if (error) throw error;
+        loadQuizzes(); // Reload the quiz list
+      } catch (error) {
+        console.error('Error deleting quiz:', error);
+        alert('Failed to delete quiz. Please try again.');
+      }
+    }
   };
 
   if (gameLobby) {
@@ -200,7 +213,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId }) =>
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
-                      <button className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-gray-100">
+                      <button 
+                        onClick={() => handleDeleteQuiz(quiz)}
+                        className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-gray-100"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

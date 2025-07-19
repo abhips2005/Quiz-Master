@@ -106,7 +106,12 @@ export const createQuiz = async (quiz: Omit<Quiz, 'id' | 'created_at' | 'updated
 export const getQuizzes = async (teacherId: string) => {
   const { data, error } = await supabase
     .from('quizzes')
-    .select('*')
+    .select(`
+      *,
+      questions (
+        id
+      )
+    `)
     .eq('teacher_id', teacherId)
     .order('created_at', { ascending: false });
   return { data, error };
@@ -128,6 +133,27 @@ export const getQuizById = async (id: string) => {
   if (data && data.questions) {
     data.questions.sort((a: any, b: any) => a.order_index - b.order_index);
   }
+  
+  return { data, error };
+};
+
+export const deleteQuiz = async (id: string, teacherId: string) => {
+  // First delete all questions associated with this quiz
+  const { error: questionsError } = await supabase
+    .from('questions')
+    .delete()
+    .eq('quiz_id', id);
+  
+  if (questionsError) return { data: null, error: questionsError };
+  
+  // Then delete the quiz itself
+  const { data, error } = await supabase
+    .from('quizzes')
+    .delete()
+    .eq('id', id)
+    .eq('teacher_id', teacherId) // Ensure only the owner can delete
+    .select()
+    .single();
   
   return { data, error };
 };
