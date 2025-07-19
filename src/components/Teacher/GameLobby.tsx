@@ -28,11 +28,27 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
       console.log('Loading participants...');
       const { data, error } = await supabase
         .from('participants')
-        .select('*')
+        .select(`
+          *,
+          users (
+            name
+          )
+        `)
         .eq('session_id', session.id);
       
       if (error) throw error;
       console.log('Loaded participants:', data);
+      console.log('First participant data structure:', data?.[0]);
+      console.log('Each participant in lobby:');
+      data?.forEach((p, i) => {
+        console.log(`Participant ${i}:`, {
+          id: p.id,
+          nickname: p.nickname,
+          score: p.score,
+          user_id: p.user_id,
+          users: p.users
+        });
+      });
       setParticipants(data || []);
       setLastUpdate(new Date());
     } catch (error) {
@@ -125,7 +141,21 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
       if (error) throw error;
       
       // Fetch final leaderboard data
-      const { data: leaderboard } = await getSessionLeaderboard(session.id);
+      console.log('Fetching leaderboard for session:', session.id);
+      const { data: leaderboard, error: leaderboardError } = await getSessionLeaderboard(session.id);
+      console.log('Leaderboard data received:', leaderboard);
+      console.log('Leaderboard error:', leaderboardError);
+      console.log('Each participant in leaderboard:');
+      leaderboard?.forEach((p, i) => {
+        console.log(`Participant ${i}:`, {
+          id: p.id,
+          nickname: p.nickname,
+          score: p.score,
+          user_id: p.user_id,
+          users: p.users
+        });
+      });
+      
       if (leaderboard) {
         setLeaderboardData(leaderboard);
       }
@@ -426,11 +456,16 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
                 <div className="flex items-center space-x-3">
                   <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
                     <span className="text-purple-600 font-semibold">
-                      {participant.nickname.charAt(0).toUpperCase()}
+                      {(participant.users?.name || participant.nickname).charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{participant.nickname}</p>
+                    <p className="font-medium text-gray-900">
+                      {participant.users?.name || participant.nickname}
+                    </p>
+                    {participant.users?.name && (
+                      <p className="text-xs text-gray-400">@{participant.nickname}</p>
+                    )}
                     <p className="text-sm text-gray-500">Score: {participant.score}</p>
                   </div>
                 </div>
@@ -534,11 +569,16 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
                   <div className="flex items-center space-x-3">
                     <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
                       <span className="text-purple-600 font-semibold">
-                        {participant.nickname.charAt(0).toUpperCase()}
+                        {(participant.users?.name || participant.nickname).charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{participant.nickname}</p>
+                      <p className="font-medium text-gray-900">
+                        {participant.users?.name || participant.nickname}
+                      </p>
+                      {participant.users?.name && (
+                        <p className="text-xs text-gray-400">@{participant.nickname}</p>
+                      )}
                       <p className="text-sm text-gray-500">
                         Joined {new Date(participant.join_time).toLocaleTimeString()}
                       </p>

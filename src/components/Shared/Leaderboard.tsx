@@ -5,6 +5,9 @@ interface LeaderboardEntry {
   id: string;
   nickname: string;
   score: number;
+  users?: {
+    name: string;
+  };
 }
 
 interface LeaderboardProps {
@@ -20,10 +23,14 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   showBackButton = false,
   onBack 
 }) => {
+  console.log('Leaderboard component received participants:', participants);
+  
   // Sort participants by score (descending) and take top 10
   const topParticipants = [...participants]
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
+
+  console.log('Top participants after sorting:', topParticipants);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -81,7 +88,12 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                       {getRankIcon(rank)}
                     </div>
                     <div>
-                      <p className="font-semibold text-lg">{participant.nickname}</p>
+                      <p className="font-semibold text-lg">
+                        {participant.users?.name || participant.nickname}
+                      </p>
+                      {participant.users?.name && (
+                        <p className="text-xs opacity-60">@{participant.nickname}</p>
+                      )}
                       {rank <= 3 && (
                         <p className="text-sm opacity-80">
                           {rank === 1 ? "🏆 Champion" : rank === 2 ? "🥈 Runner-up" : "🥉 Third Place"}

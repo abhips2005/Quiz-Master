@@ -211,12 +211,24 @@ export const joinGameSession = async (sessionId: string, nickname: string, userI
 
 // Leaderboard operations
 export const getSessionLeaderboard = async (sessionId: string) => {
+  console.log('getSessionLeaderboard called for session:', sessionId);
+  
   const { data, error } = await supabase
     .from('participants')
-    .select('*')
+    .select(`
+      id,
+      nickname,
+      score,
+      user_id,
+      users (
+        name
+      )
+    `)
     .eq('session_id', sessionId)
     .order('score', { ascending: false })
     .limit(10);
+  
+  console.log('getSessionLeaderboard raw result:', { data, error });
   
   return { data, error };
 };

@@ -65,6 +65,9 @@ export interface Participant {
   badges_earned: Badge[];
   join_time: string;
   is_active: boolean;
+  users?: {
+    name: string;
+  };
 }
 
 export interface Answer {
