@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { signInWithEmail, signUpWithEmail } from '../../lib/supabase';
 import { User, Lock, Mail, UserPlus } from 'lucide-react';
+import { Footer } from '../Layout/Footer';
 
 interface AuthFormProps {
   onSuccess: () => void;
@@ -165,6 +166,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
           </div>
         </div>
       </div>
+      
+      <Footer />
     </div>
   );
 };

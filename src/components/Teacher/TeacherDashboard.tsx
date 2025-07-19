@@ -4,6 +4,7 @@ import { getQuizzes, getQuizById, createGameSession, deleteQuiz } from '../../li
 import { Quiz } from '../../types';
 import { QuizEditor } from './QuizEditor';
 import { GameLobby } from './GameLobby';
+import { Footer } from '../Layout/Footer';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -247,6 +248,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId }) =>
           )}
         </div>
       </div>
+      
+      <Footer />
     </div>
   );
 };

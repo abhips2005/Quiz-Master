@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GamepadIcon, ArrowRight, Users, Loader2 } from 'lucide-react';
 import { getGameSessionByPin, joinGameSession, supabase } from '../../lib/supabase';
+import { Footer } from '../Layout/Footer';
 
 interface JoinGameProps {
   onJoinGame: (gameSession: any) => void;
@@ -184,6 +185,8 @@ export const JoinGame: React.FC<JoinGameProps> = ({ onJoinGame, userId }) => {
           </div>
         </form>
       )}
+      
+      <Footer />
     </div>
   );
 };

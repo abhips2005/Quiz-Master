@@ -3,6 +3,7 @@ import { Clock, Trophy, Users, Zap, ArrowLeft } from 'lucide-react';
 import { supabase, getSessionLeaderboard, checkAndAwardBadges, getUserStats } from '../../lib/supabase';
 import { useRealtime } from '../../hooks/useRealtime';
 import { Leaderboard } from '../Shared/Leaderboard';
+import { Footer } from '../Layout/Footer';
 
 interface GamePlayProps {
   session: any;
@@ -410,6 +411,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
             <span>Leave Game</span>
           </button>
         </div>
+        
+        <Footer />
       </div>
     );
   }
@@ -462,6 +465,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
             style={{ width: `${(timeLeft / currentQuestion.time_limit) * 100}%` }}
           />
         </div>
+        
+        <Footer />
       </div>
     );
   }
@@ -517,6 +522,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
             </div>
           )}
         </div>
+        
+        <Footer />
       </div>
     );
   }
@@ -557,6 +564,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
               </button>
             </div>
           </div>
+          
+          <Footer />
         </div>
       </div>
     );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Target, Zap, Star, Clock, Award } from 'lucide-react';
 import { JoinGame } from './JoinGame';
 import { GamePlay } from './GamePlay';
+import { Footer } from '../Layout/Footer';
 import { getUserStats, getUserGameHistory, getUserBadges } from '../../lib/supabase';
 import { GameSession } from '../../types';
 
@@ -234,6 +235,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) =>
           <p className="text-sm text-gray-500 mt-1">Compete with students from around the world</p>
         </div>
       </div>
+      
+      <Footer />
     </div>
   );
 };

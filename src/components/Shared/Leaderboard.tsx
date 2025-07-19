@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Medal, Award, Users } from 'lucide-react';
+import { Trophy, Medal, Award, Users, X } from 'lucide-react';
 
 interface LeaderboardEntry {
   id: string;

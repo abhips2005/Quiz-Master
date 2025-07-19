@@ -4,6 +4,7 @@ import { supabase, getSessionLeaderboard } from '../../lib/supabase';
 import { GameSession, Participant } from '../../types';
 import { useRealtime } from '../../hooks/useRealtime';
 import { Leaderboard } from '../Shared/Leaderboard';
+import { Footer } from '../Layout/Footer';
 
 interface GameLobbyProps {
   session: GameSession;
@@ -330,6 +331,8 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
               </button>
             </div>
           </div>
+          
+          <Footer />
         </div>
       </div>
     );
@@ -615,6 +618,8 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
           </div>
         </div>
       </div>
+      
+      <Footer />
     </div>
   );
 };
