@@ -354,11 +354,17 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, userId, onLeave }) 
           <p className="text-gray-600 mb-6">
             Current Score: <strong>{score} points</strong>
           </p>
-          <div className="bg-purple-50 rounded-lg p-4">
+          <div className="bg-purple-50 rounded-lg p-4 mb-6">
             <p className="text-purple-800">
               <strong>Streak:</strong> {streak} 🔥
             </p>
           </div>
+          {currentQuestion?.explanation && (
+            <div className="bg-blue-50 rounded-lg p-4 text-left">
+              <h4 className="font-semibold text-blue-900 mb-2">Explanation:</h4>
+              <p className="text-blue-800 text-sm">{currentQuestion.explanation}</p>
+            </div>
+          )}
         </div>
       </div>
     );
