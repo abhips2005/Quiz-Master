@@ -1,27 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Trophy, Users, Zap, ArrowLeft } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, getSessionLeaderboard } from '../../lib/supabase';
 import { useRealtime } from '../../hooks/useRealtime';
+import { Leaderboard } from '../Shared/Leaderboard';
 
 interface GamePlayProps {
   session: any;
-  userId: string;
   onLeave: () => void;
 }
 
-export const GamePlay: React.FC<GamePlayProps> = ({ session, userId, onLeave }) => {
+export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'question' | 'results' | 'ended'>('waiting');
   const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [participants, setParticipants] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
   const resultsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [cachedQuizData, setCachedQuizData] = useState<any>(null); // Cache quiz data
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean>(false); // Track answer correctness
+  const [finalLeaderboard, setFinalLeaderboard] = useState<any[]>([]);
 
   useEffect(() => {
     // Check if game is already active when component loads
@@ -49,6 +48,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, userId, onLeave }) 
           setGameState('playing');
           loadCurrentQuestion(updatedSession.current_question || 0);
         } else if (updatedSession.status === 'completed' && gameState !== 'ended') {
+          // Load final leaderboard when game ends
+          const { data: leaderboardData } = await getSessionLeaderboard(session.id);
+          if (leaderboardData) {
+            setFinalLeaderboard(leaderboardData);
+          }
           setGameState('ended');
         }
         
@@ -111,6 +115,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, userId, onLeave }) 
         loadCurrentQuestion(updatedSession.current_question || 0);
         setCurrentQuestionIndex(updatedSession.current_question || 0);
       } else if (updatedSession.status === 'completed') {
+        // Load final leaderboard when game ends
+        getSessionLeaderboard(session.id).then(({ data: leaderboardData }) => {
+          if (leaderboardData) {
+            setFinalLeaderboard(leaderboardData);
+          }
+        });
         setGameState('ended');
       }
       
@@ -372,21 +382,40 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, userId, onLeave }) 
 
   if (gameState === 'ended') {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="bg-white rounded-xl p-8 card-shadow">
-          <div className="h-20 w-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Trophy className="h-10 w-10 text-purple-600" />
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-xl p-6 card-shadow mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={onLeave}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Quiz Complete!</h1>
+                  <p className="text-gray-600">Your final score: <strong>{score} points</strong></p>
+                </div>
+              </div>
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Game Over!</h2>
-          <p className="text-gray-600 mb-6">
-            Final Score: <strong>{score} points</strong>
-          </p>
-          <button
-            onClick={onLeave}
-            className="btn-primary"
-          >
-            Back to Dashboard
-          </button>
+
+          {/* Final Leaderboard */}
+          <Leaderboard participants={finalLeaderboard} title="Final Results" />
+
+          {/* Action Buttons */}
+          <div className="mt-6 bg-white rounded-xl p-6 card-shadow">
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={onLeave}
+                className="btn-primary"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );

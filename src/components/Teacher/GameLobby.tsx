@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Play, Users, Settings, Copy, Check, RefreshCw } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, getSessionLeaderboard } from '../../lib/supabase';
 import { GameSession, Participant } from '../../types';
 import { useRealtime } from '../../hooks/useRealtime';
+import { Leaderboard } from '../Shared/Leaderboard';
 
 interface GameLobbyProps {
   session: GameSession;
@@ -19,6 +20,8 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [questionStartTime, setQuestionStartTime] = useState<Date | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [gameCompleted, setGameCompleted] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
 
   const loadParticipants = useCallback(async () => {
     try {
@@ -120,12 +123,19 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
         .eq('id', session.id);
 
       if (error) throw error;
-      // Could redirect to final results or close
-      onClose();
+      
+      // Fetch final leaderboard data
+      const { data: leaderboard } = await getSessionLeaderboard(session.id);
+      if (leaderboard) {
+        setLeaderboardData(leaderboard);
+      }
+      
+      // Show the final leaderboard instead of closing
+      setGameCompleted(true);
     } catch (error) {
       console.error('Error ending game:', error);
     }
-  }, [session.id, onClose]);
+  }, [session.id]);
 
   const handleNextQuestion = useCallback(async () => {
     if (!quiz || currentQuestionIndex >= quiz.questions.length - 1) {
@@ -252,6 +262,48 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
   };
 
   console.log('Render state:', { gameStarted, quiz: !!quiz, participants: participants.length, session });
+
+  // Show final leaderboard when game is completed
+  if (gameCompleted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-xl p-6 card-shadow mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Quiz Complete!</h1>
+                  <p className="text-gray-600">{quiz?.title}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Final Leaderboard */}
+          <Leaderboard participants={leaderboardData} title="Final Results" />
+
+          {/* Action Buttons */}
+          <div className="mt-6 bg-white rounded-xl p-6 card-shadow">
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={onClose}
+                className="btn-primary"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (gameStarted && quiz) {
     const currentQuestion = quiz.questions[currentQuestionIndex];
