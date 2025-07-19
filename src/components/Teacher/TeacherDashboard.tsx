@@ -1,0 +1,232 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Play, Edit3, Trash2, Users, BarChart3, Trophy, Clock } from 'lucide-react';
+import { getQuizzes, getQuizById, createGameSession } from '../../lib/supabase';
+import { Quiz } from '../../types';
+import { QuizEditor } from './QuizEditor';
+import { GameLobby } from './GameLobby';
+
+interface TeacherDashboardProps {
+  userId: string;
+}
+
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId }) => {
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditor, setShowEditor] = useState(false);
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [gameLobby, setGameLobby] = useState<any>(null);
+
+  useEffect(() => {
+    loadQuizzes();
+  }, [userId]);
+
+  const loadQuizzes = async () => {
+    try {
+      const { data, error } = await getQuizzes(userId);
+      if (error) throw error;
+      setQuizzes(data || []);
+    } catch (error) {
+      console.error('Error loading quizzes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateQuiz = () => {
+    setSelectedQuiz(null);
+    setShowEditor(true);
+  };
+
+  const handleEditQuiz = async (quiz: Quiz) => {
+    try {
+      // Load full quiz data with questions
+      const { data: fullQuiz, error } = await getQuizById(quiz.id);
+      if (error) throw error;
+      setSelectedQuiz(fullQuiz);
+      setShowEditor(true);
+    } catch (error) {
+      console.error('Error loading quiz for editing:', error);
+    }
+  };
+
+  const handleStartGame = async (quiz: Quiz) => {
+    try {
+      const settings = {
+        show_leaderboard: true,
+        allow_powerups: true,
+        shuffle_questions: false,
+        show_correct_answers: true,
+        time_pressure: true,
+        bonus_points: true,
+      };
+
+      const { data, error } = await createGameSession(quiz.id, userId, settings);
+      if (error) throw error;
+      setGameLobby(data);
+    } catch (error) {
+      console.error('Error starting game:', error);
+    }
+  };
+
+  const handleQuizSaved = () => {
+    setShowEditor(false);
+    setSelectedQuiz(null);
+    loadQuizzes();
+  };
+
+  if (gameLobby) {
+    return <GameLobby session={gameLobby} onClose={() => setGameLobby(null)} />;
+  }
+
+  if (showEditor) {
+    return (
+      <QuizEditor 
+        quiz={selectedQuiz} 
+        onSave={handleQuizSaved}
+        onCancel={() => setShowEditor(false)}
+      />
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">Teacher Dashboard</h2>
+            <p className="text-gray-600 mt-1">Create and manage your quizzes</p>
+          </div>
+          <button
+            onClick={handleCreateQuiz}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Create Quiz</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-xl p-6 card-shadow">
+          <div className="flex items-center">
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <BarChart3 className="h-6 w-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Total Quizzes</p>
+              <p className="text-2xl font-bold text-gray-900">{quizzes.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 card-shadow">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Users className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Total Students</p>
+              <p className="text-2xl font-bold text-gray-900">--</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 card-shadow">
+          <div className="flex items-center">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <Trophy className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Games Played</p>
+              <p className="text-2xl font-bold text-gray-900">--</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 card-shadow">
+          <div className="flex items-center">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <Clock className="h-6 w-6 text-orange-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Avg. Time</p>
+              <p className="text-2xl font-bold text-gray-900">--</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quizzes Grid */}
+      <div className="bg-white rounded-xl card-shadow">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900">My Quizzes</h3>
+        </div>
+        <div className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            </div>
+          ) : quizzes.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BarChart3 className="h-12 w-12 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No quizzes yet</h3>
+              <p className="text-gray-600 mb-6">Create your first quiz to get started!</p>
+              <button
+                onClick={handleCreateQuiz}
+                className="btn-primary"
+              >
+                Create Your First Quiz
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {quizzes.map((quiz) => (
+                <div key={quiz.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      quiz.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                      quiz.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {quiz.difficulty}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEditQuiz(quiz)}
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-gray-100">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">{quiz.title}</h4>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{quiz.description}</p>
+                  
+                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                    <span>{quiz.questions?.length || 0} questions</span>
+                    <span>{quiz.time_limit}min</span>
+                  </div>
+                  
+                  <button
+                    onClick={() => handleStartGame(quiz)}
+                    className="w-full btn-primary flex items-center justify-center space-x-2"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Start Game</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
