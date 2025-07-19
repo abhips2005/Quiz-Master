@@ -18,22 +18,28 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
   const [showResults, setShowResults] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [questionStartTime, setQuestionStartTime] = useState<Date | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const loadParticipants = useCallback(async () => {
     try {
+      console.log('Loading participants...');
       const { data, error } = await supabase
         .from('participants')
         .select('*')
         .eq('session_id', session.id);
       
       if (error) throw error;
+      console.log('Loaded participants:', data);
       setParticipants(data || []);
+      setLastUpdate(new Date());
     } catch (error) {
       console.error('Error loading participants:', error);
     }
   }, [session.id]);
 
   useEffect(() => {
+    loadQuiz(); // Load quiz immediately when component mounts
+    
     // Only poll for participants before the game starts
     if (!gameStarted) {
       loadParticipants();
@@ -45,15 +51,22 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
 
       return () => clearInterval(interval);
     } else {
-      // Load participants once when game starts, then stop polling
+      // Load participants once when game starts, then add polling for score updates
       loadParticipants();
+      
+      // During game, poll every 2 seconds to catch any missed score updates
+      const gameInterval = setInterval(() => {
+        console.log('Polling for participant score updates during game');
+        loadParticipants();
+      }, 2000);
+
+      return () => clearInterval(gameInterval);
     }
-    
-    loadQuiz();
   }, [loadParticipants, gameStarted]);
 
   const loadQuiz = async () => {
     try {
+      console.log('Loading quiz for session:', session.quiz_id);
       const { data, error } = await supabase
         .from('quizzes')
         .select('*, questions(*)')
@@ -61,6 +74,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
         .single();
       
       if (error) throw error;
+      console.log('Quiz loaded:', data);
       // Sort questions by order_index
       if (data.questions) {
         data.questions.sort((a: any, b: any) => a.order_index - b.order_index);
@@ -150,7 +164,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
         handleNextQuestion();
       }, 100); // Reduced to just 100ms
     }
-  }, [participants.length, currentQuestionIndex, autoAdvance, gameStarted]);
+  }, [checkAllAnswered, handleNextQuestion, setShowResults]);
 
   // Timeout mechanism - auto advance after question time limit + buffer
   useEffect(() => {
@@ -174,18 +188,15 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
   
   // Subscribe to real-time updates with stable callback
   const handleRealtimeUpdate = useCallback((payload: any) => {
+    console.log('Real-time update received:', payload.eventType, payload);
+    
+    // Always update participant list when there's any change
+    loadParticipants();
+    
     // Only handle participant updates during the game for answer checking
-    if (gameStarted) {
-      // Update participant list to show new scores when participants submit answers
-      loadParticipants();
-      
-      // Check for auto-advance when participant data changes (answer submitted)
-      if (payload.eventType === 'UPDATE') {
-        autoAdvanceIfReady();
-      }
-    } else {
-      // Before game starts, update participant list for new joiners
-      loadParticipants();
+    if (gameStarted && payload.eventType === 'UPDATE') {
+      console.log('Participant updated during game, checking auto-advance');
+      autoAdvanceIfReady();
     }
   }, [loadParticipants, gameStarted, autoAdvanceIfReady]);
 
@@ -208,6 +219,8 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
       return;
     }
 
+    console.log('Starting game...', { quiz: !!quiz, participants: participants.length });
+
     try {
       const { error } = await supabase
         .from('game_sessions')
@@ -219,10 +232,14 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
         .eq('id', session.id);
 
       if (error) throw error;
+      
+      console.log('Game session updated, setting game started...');
       setGameStarted(true);
       setCurrentQuestionIndex(0);
       setQuestionStartTime(new Date());
       setShowResults(false);
+      
+      console.log('Game started state set');
     } catch (error) {
       console.error('Error starting game:', error);
     }
@@ -234,7 +251,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
     setShowResults(true);
   };
 
-
+  console.log('Render state:', { gameStarted, quiz: !!quiz, participants: participants.length, session });
 
   if (gameStarted && quiz) {
     const currentQuestion = quiz.questions[currentQuestionIndex];
@@ -332,9 +349,25 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
 
         {/* Participants Status */}
         <div className="bg-white rounded-xl p-6 card-shadow mb-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">
-            Participants ({participants.length})
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Participants ({participants.length})
+            </h3>
+            <div className="flex items-center space-x-4">
+              {lastUpdate && (
+                <span className="text-xs text-gray-500">
+                  Updated: {lastUpdate.toLocaleTimeString()}
+                </span>
+              )}
+              <button
+                onClick={loadParticipants}
+                className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 flex items-center space-x-1"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Refresh Scores</span>
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {participants.map((participant) => (
               <div key={participant.id} className="border border-gray-200 rounded-lg p-4">
