@@ -77,7 +77,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header user={user} userProfile={userProfile} />
-      <main>
+      <main className="pb-safe">
         {userProfile?.role === 'teacher' ? (
           <TeacherDashboard userId={user.id} />
         ) : (

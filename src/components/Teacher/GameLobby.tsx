@@ -503,50 +503,50 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <div className="flex items-center space-x-4 mb-6">
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center space-x-3 sm:space-x-4 mb-4 sm:mb-6">
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+            className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
           >
-            <ArrowLeft className="h-6 w-6" />
+            <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
-          <h2 className="text-3xl font-bold text-gray-900">Game Lobby</h2>
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900">Game Lobby</h2>
         </div>
 
         {/* Game PIN */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-8 text-white text-center mb-6">
-          <h3 className="text-2xl font-bold mb-4">Students can join with PIN:</h3>
-          <div className="flex items-center justify-center space-x-4">
-            <div className="bg-white bg-opacity-20 rounded-lg px-8 py-4">
-              <span className="text-4xl font-bold tracking-widest">{session.pin}</span>
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-4 sm:p-8 text-white text-center mb-4 sm:mb-6">
+          <h3 className="text-lg sm:text-2xl font-bold mb-3 sm:mb-4">Students can join with PIN:</h3>
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <div className="bg-white bg-opacity-20 rounded-lg px-4 py-2 sm:px-8 sm:py-4">
+              <span className="text-2xl sm:text-4xl font-bold tracking-widest">{session.pin}</span>
             </div>
             <button
               onClick={handleCopyPin}
-              className="p-3 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
+              className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
             >
-              {copied ? <Check className="h-6 w-6" /> : <Copy className="h-6 w-6" />}
+              {copied ? <Check className="h-5 w-5 sm:h-6 sm:w-6" /> : <Copy className="h-5 w-5 sm:h-6 sm:w-6" />}
             </button>
           </div>
-          <p className="mt-4 text-purple-100">
+          <p className="mt-3 sm:mt-4 text-purple-100 text-sm sm:text-base">
             Go to your quiz platform and enter this PIN to join the game!
           </p>
         </div>
 
         {/* Participants */}
-        <div className="bg-white rounded-xl p-6 card-shadow mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 flex items-center">
-              <Users className="h-5 w-5 mr-2" />
+        <div className="bg-white rounded-xl p-4 sm:p-6 card-shadow mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Participants ({participants.length})
             </h3>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
               <button
                 onClick={loadParticipants}
-                className="text-sm text-purple-600 hover:text-purple-700 flex items-center space-x-1"
+                className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 flex items-center space-x-1"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span>Refresh</span>
               </button>
               <div className="flex items-center space-x-2">
@@ -563,23 +563,23 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
               <p className="text-gray-600">Students will appear here when they join with the PIN</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {participants.map((participant) => (
-                <div key={participant.id} className="border border-gray-200 rounded-lg p-4 slide-in">
-                  <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-purple-600 font-semibold">
+                <div key={participant.id} className="border border-gray-200 rounded-lg p-3 sm:p-4 slide-in">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-purple-600 font-semibold text-sm sm:text-base">
                         {(participant.users?.name || participant.nickname).charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
                         {participant.users?.name || participant.nickname}
                       </p>
                       {participant.users?.name && (
-                        <p className="text-xs text-gray-400">@{participant.nickname}</p>
+                        <p className="text-xs text-gray-400 truncate">@{participant.nickname}</p>
                       )}
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs sm:text-sm text-gray-500">
                         Joined {new Date(participant.join_time).toLocaleTimeString()}
                       </p>
                     </div>
@@ -591,13 +591,13 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
         </div>
 
         {/* Game Controls */}
-        <div className="bg-white rounded-xl p-6 card-shadow">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Settings className="h-6 w-6 text-gray-600" />
+        <div className="bg-white rounded-xl p-4 sm:p-6 card-shadow">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
+            <div className="flex items-start space-x-3 sm:space-x-4">
+              <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-gray-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-gray-900">Game Settings</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-medium text-gray-900 text-sm sm:text-base">Game Settings</p>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">
                   {session.settings.show_leaderboard ? 'Show leaderboard' : 'Hide leaderboard'} • 
                   {session.settings.time_pressure ? ' Time pressure' : ' No time pressure'} • 
                   {session.settings.allow_powerups ? ' Power-ups enabled' : ' Power-ups disabled'}
@@ -607,9 +607,9 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
             <button
               onClick={handleStartGame}
               disabled={participants.length === 0}
-              className="btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed w-full lg:w-auto px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base touch-manipulation"
             >
-              <Play className="h-5 w-5" />
+              <Play className="h-4 w-4 sm:h-5 sm:w-5" />
               <span>Start Game</span>
             </button>
           </div>

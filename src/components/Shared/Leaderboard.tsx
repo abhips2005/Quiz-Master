@@ -59,51 +59,51 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-xl p-8 card-shadow">
-        <div className="text-center mb-8">
-          <div className="h-16 w-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Trophy className="h-8 w-8 text-white" />
+    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      <div className="bg-white rounded-xl p-4 sm:p-8 card-shadow">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
-          <p className="text-gray-600">Congratulations to all participants!</p>
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-2">{title}</h2>
+          <p className="text-sm sm:text-base text-gray-600">Congratulations to all participants!</p>
         </div>
 
         {topParticipants.length === 0 ? (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No participants to display</p>
+          <div className="text-center py-8 sm:py-12">
+            <Users className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+            <p className="text-sm sm:text-base text-gray-600">No participants to display</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {topParticipants.map((participant, index) => {
               const rank = index + 1;
               return (
                 <div
                   key={participant.id}
-                  className={`flex items-center justify-between p-4 rounded-lg transition-all hover:shadow-md ${getRankBg(rank)}`}
+                  className={`flex items-center justify-between p-3 sm:p-4 rounded-lg transition-all hover:shadow-md ${getRankBg(rank)}`}
                 >
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
                     <div className="flex-shrink-0">
                       {getRankIcon(rank)}
                     </div>
-                    <div>
-                      <p className="font-semibold text-lg">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm sm:text-lg truncate">
                         {participant.users?.name || participant.nickname}
                       </p>
                       {participant.users?.name && (
-                        <p className="text-xs opacity-60">@{participant.nickname}</p>
+                        <p className="text-xs opacity-60 truncate">@{participant.nickname}</p>
                       )}
                       {rank <= 3 && (
-                        <p className="text-sm opacity-80">
+                        <p className="text-xs sm:text-sm opacity-80">
                           {rank === 1 ? "🏆 Champion" : rank === 2 ? "🥈 Runner-up" : "🥉 Third Place"}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold">{participant.score}</p>
-                    <p className="text-sm opacity-80">points</p>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p className="text-base sm:text-xl font-bold">{participant.score}</p>
+                    <p className="text-xs sm:text-sm opacity-80">points</p>
                   </div>
                 </div>
               );
@@ -112,10 +112,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
         )}
 
         {showBackButton && (
-          <div className="mt-8 text-center">
+          <div className="mt-6 sm:mt-8 text-center">
             <button
               onClick={onBack}
-              className="btn-secondary"
+              className="btn-secondary px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base"
             >
               Back to Dashboard
             </button>

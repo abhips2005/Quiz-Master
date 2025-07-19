@@ -80,12 +80,12 @@ export const JoinGame: React.FC<JoinGameProps> = ({ onJoinGame, userId }) => {
 
   return (
     <div className="max-w-md mx-auto">
-      <div className="text-center mb-8">
-        <div className="mx-auto h-16 w-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mb-4">
-          <GamepadIcon className="h-8 w-8 text-white" />
+      <div className="text-center mb-6 sm:mb-8">
+        <div className="mx-auto h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+          <GamepadIcon className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">Join Live Quiz</h3>
-        <p className="text-gray-600">
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Join Live Quiz</h3>
+        <p className="text-sm sm:text-base text-gray-600">
           {step === 'pin' 
             ? 'Enter the PIN provided by your teacher'
             : 'Choose a nickname to join the game'
@@ -94,7 +94,7 @@ export const JoinGame: React.FC<JoinGameProps> = ({ onJoinGame, userId }) => {
       </div>
 
       {step === 'pin' ? (
-        <form onSubmit={handlePinSubmit} className="space-y-6">
+        <form onSubmit={handlePinSubmit} className="space-y-4 sm:space-y-6">
           <div>
             <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
               Game PIN
@@ -102,7 +102,7 @@ export const JoinGame: React.FC<JoinGameProps> = ({ onJoinGame, userId }) => {
             <input
               type="text"
               id="pin"
-              className="input-field text-center text-2xl font-bold tracking-widest uppercase"
+              className="input-field text-center text-xl sm:text-2xl font-bold tracking-widest uppercase"
               placeholder="Enter PIN"
               value={pin}
               onChange={(e) => setPin(e.target.value.toUpperCase())}
@@ -112,7 +112,7 @@ export const JoinGame: React.FC<JoinGameProps> = ({ onJoinGame, userId }) => {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 text-red-700 text-xs sm:text-sm">
               {error}
             </div>
           )}
@@ -120,20 +120,20 @@ export const JoinGame: React.FC<JoinGameProps> = ({ onJoinGame, userId }) => {
           <button
             type="submit"
             disabled={loading || !pin.trim()}
-            className="w-full btn-primary flex items-center justify-center space-x-2"
+            className="w-full btn-primary flex items-center justify-center space-x-2 py-3 sm:py-4"
           >
             {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
             ) : (
               <>
-                <span>Continue</span>
-                <ArrowRight className="h-5 w-5" />
+                <span className="text-sm sm:text-base">Continue</span>
+                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
               </>
             )}
           </button>
         </form>
       ) : (
-        <form onSubmit={handleJoinSubmit} className="space-y-6">
+        <form onSubmit={handleJoinSubmit} className="space-y-4 sm:space-y-6">
           <div>
             <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-2">
               Your Nickname

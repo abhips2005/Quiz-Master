@@ -349,25 +349,25 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
 
   if (gameState === 'waiting') {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="bg-white rounded-xl p-8 card-shadow">
-          <div className="pulse-animation mb-6">
-            <div className="h-20 w-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
-              <Users className="h-10 w-10 text-purple-600" />
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-8 sm:py-16 text-center">
+        <div className="bg-white rounded-xl p-6 sm:p-8 card-shadow">
+          <div className="pulse-animation mb-4 sm:mb-6">
+            <div className="h-16 w-16 sm:h-20 sm:w-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+              <Users className="h-8 w-8 sm:h-10 sm:w-10 text-purple-600" />
             </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Waiting for game to start...</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">Waiting for game to start...</h2>
+          <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
             You've successfully joined the game! The teacher will start the quiz soon.
           </p>
-          <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm text-gray-500">
             <span>Game PIN: <strong>{session.pin}</strong></span>
-            <span>•</span>
-            <span>Quiz: <strong>{session.quizzes?.title}</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <span className="truncate max-w-full">Quiz: <strong>{session.quizzes?.title}</strong></span>
           </div>
           <button
             onClick={onLeave}
-            className="mt-6 btn-secondary flex items-center space-x-2 mx-auto"
+            className="mt-4 sm:mt-6 btn-secondary flex items-center space-x-2 mx-auto text-sm sm:text-base"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Leave Game</span>
@@ -379,49 +379,49 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
 
   if (gameState === 'question' && currentQuestion) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 bg-purple-100 px-4 py-2 rounded-lg">
-              <Trophy className="h-5 w-5 text-purple-600" />
-              <span className="font-semibold text-purple-800">{score}</span>
+        <div className="flex flex-wrap items-center justify-between mb-4 sm:mb-6 gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="flex items-center space-x-1 sm:space-x-2 bg-purple-100 px-2 sm:px-4 py-1 sm:py-2 rounded-lg">
+              <Trophy className="h-3 w-3 sm:h-5 sm:w-5 text-purple-600" />
+              <span className="font-semibold text-purple-800 text-sm sm:text-base">{score}</span>
             </div>
-            <div className="flex items-center space-x-2 bg-orange-100 px-4 py-2 rounded-lg">
-              <Zap className="h-5 w-5 text-orange-600" />
-              <span className="font-semibold text-orange-800 streak-fire">{streak}</span>
+            <div className="flex items-center space-x-1 sm:space-x-2 bg-orange-100 px-2 sm:px-4 py-1 sm:py-2 rounded-lg">
+              <Zap className="h-3 w-3 sm:h-5 sm:w-5 text-orange-600" />
+              <span className="font-semibold text-orange-800 streak-fire text-sm sm:text-base">{streak}</span>
             </div>
           </div>
-          <div className="flex items-center space-x-2 bg-red-100 px-4 py-2 rounded-lg">
-            <Clock className="h-5 w-5 text-red-600" />
-            <span className="font-bold text-red-800 text-xl">{timeLeft}s</span>
+          <div className="flex items-center space-x-1 sm:space-x-2 bg-red-100 px-2 sm:px-4 py-1 sm:py-2 rounded-lg">
+            <Clock className="h-3 w-3 sm:h-5 sm:w-5 text-red-600" />
+            <span className="font-bold text-red-800 text-lg sm:text-xl">{timeLeft}s</span>
           </div>
         </div>
 
         {/* Question */}
-        <div className="bg-white rounded-xl p-8 card-shadow mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+        <div className="bg-white rounded-xl p-4 sm:p-8 card-shadow mb-4 sm:mb-6">
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center leading-tight">
             {currentQuestion.question}
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
             {currentQuestion.options.map((option: string, index: number) => (
               <button
                 key={index}
                 onClick={() => handleAnswerSelect(index)}
                 disabled={selectedAnswer !== null}
-                className={`p-4 rounded-lg border-2 transition-all text-left font-medium ${getAnswerClassName(index)}`}
+                className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left font-medium touch-manipulation ${getAnswerClassName(index)}`}
               >
-                <span className="text-lg">{option}</span>
+                <span className="text-base sm:text-lg">{option}</span>
               </button>
             ))}
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="bg-gray-200 rounded-full h-2 mb-4">
+        <div className="bg-gray-200 rounded-full h-2 sm:h-3 mb-4">
           <div 
-            className="bg-purple-600 h-2 rounded-full transition-all duration-1000"
+            className="bg-purple-600 h-2 sm:h-3 rounded-full transition-all duration-1000"
             style={{ width: `${(timeLeft / currentQuestion.time_limit) * 100}%` }}
           />
         </div>
@@ -431,21 +431,21 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
 
   if (gameState === 'results') {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="bg-white rounded-xl p-8 card-shadow">
-          <div className="bounce-in mb-6">
-            <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <Trophy className="h-10 w-10 text-green-600" />
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-8 sm:py-16 text-center">
+        <div className="bg-white rounded-xl p-6 sm:p-8 card-shadow">
+          <div className="bounce-in mb-4 sm:mb-6">
+            <div className="h-16 w-16 sm:h-20 sm:w-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
             </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">
             {lastAnswerCorrect ? 'Correct!' : 'Incorrect!'}
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
             Current Score: <strong>{score} points</strong>
           </p>
-          <div className="bg-purple-50 rounded-lg p-4 mb-6">
-            <p className="text-purple-800">
+          <div className="bg-purple-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+            <p className="text-purple-800 text-sm sm:text-base">
               <strong>Streak:</strong> {streak} 🔥
             </p>
           </div>

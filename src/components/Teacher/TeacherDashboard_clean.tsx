@@ -73,7 +73,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId }) =>
     if (!confirm(`Are you sure you want to delete "${quiz.title}"?`)) return;
     
     try {
-      const { error } = await deleteQuiz(quiz.id, userId);
+      const { error } = await deleteQuiz(quiz.id);
       if (error) throw error;
       await loadQuizzes();
     } catch (error) {
