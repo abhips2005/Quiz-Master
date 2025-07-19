@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
-import { supabase } from './lib/supabase';
+import { supabase, ensureBadgesExist } from './lib/supabase';
 import { AuthForm } from './components/Auth/AuthForm';
 import { Header } from './components/Layout/Header';
 import { TeacherDashboard } from './components/Teacher/TeacherDashboard';
@@ -21,6 +21,9 @@ function App() {
 
   const loadUserProfile = async () => {
     try {
+      // Ensure badges exist before loading user profile
+      await ensureBadgesExist();
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')

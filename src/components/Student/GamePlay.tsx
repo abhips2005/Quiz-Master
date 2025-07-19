@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Trophy, Users, Zap, ArrowLeft } from 'lucide-react';
-import { supabase, getSessionLeaderboard } from '../../lib/supabase';
+import { supabase, getSessionLeaderboard, checkAndAwardBadges, getUserStats } from '../../lib/supabase';
 import { useRealtime } from '../../hooks/useRealtime';
 import { Leaderboard } from '../Shared/Leaderboard';
 
@@ -21,8 +21,36 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
   const [cachedQuizData, setCachedQuizData] = useState<any>(null); // Cache quiz data
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean>(false); // Track answer correctness
   const [finalLeaderboard, setFinalLeaderboard] = useState<any[]>([]);
+  const [newBadges, setNewBadges] = useState<any[]>([]);
+  const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
+  const [isFirstGame, setIsFirstGame] = useState(false);
 
   useEffect(() => {
+    // Load user data to check if this is their first game
+    const loadUserData = async () => {
+      try {
+        const userId = session.userId || session.user_id;
+        if (!userId) return;
+        
+        const { data: userStats } = await getUserStats(userId);
+        if (userStats) {
+          // Check total games from participants table
+          const { data: gameCount } = await supabase
+            .from('participants')
+            .select('id')
+            .eq('user_id', userId);
+            
+          const totalGames = gameCount?.length || 0;
+          setTotalGamesPlayed(totalGames);
+          setIsFirstGame(totalGames === 0);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    
+    loadUserData();
+    
     // Check if game is already active when component loads
     if (session.status === 'active') {
       setGameState('playing');
@@ -121,6 +149,29 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
             setFinalLeaderboard(leaderboardData);
           }
         });
+        
+        // Check for perfect score badge
+        const userId = session.userId || session.user_id;
+        if (userId && cachedQuizData) {
+          const totalQuestions = cachedQuizData.questions?.length || 0;
+          const correctAnswers = score > 0 ? Math.round(score / (cachedQuizData.questions?.[0]?.points || 100)) : 0;
+          const isPerfectScore = totalQuestions > 0 && correctAnswers === totalQuestions;
+          
+          if (isPerfectScore) {
+            console.log('Perfect score achieved, checking badge for user:', userId);
+            checkAndAwardBadges(userId, {
+              gameCompleted: true,
+              perfectScore: true,
+              totalGames: totalGamesPlayed + 1
+            }).then(badges => {
+              console.log('Perfect score badges returned:', badges);
+              if (badges.length > 0) {
+                setNewBadges(prev => [...prev, ...badges]);
+              }
+            });
+          }
+        }
+        
         setGameState('ended');
       }
       
@@ -231,6 +282,35 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
 
       // Store the correctness for display
       setLastAnswerCorrect(isCorrect);
+      
+      // Check and award badges
+      const userId = session.userId || session.user_id;
+      console.log('Badge check - session:', { userId: session.userId, user_id: session.user_id, resolved: userId });
+      
+      if (userId) {
+        console.log('Checking badges for user:', userId, 'with context:', {
+          answerTime: timeTaken,
+          streak: isCorrect ? streak + 1 : 0,
+          isFirstGame: isFirstGame && currentQuestionIndex === 0,
+          totalGames: totalGamesPlayed + (currentQuestionIndex === 0 ? 1 : 0)
+        });
+        
+        const currentStreak = isCorrect ? streak + 1 : 0;
+        const badges = await checkAndAwardBadges(userId, {
+          answerTime: timeTaken,
+          streak: currentStreak,
+          isFirstGame: isFirstGame && currentQuestionIndex === 0, // Only on first question of first game
+          totalGames: totalGamesPlayed + (currentQuestionIndex === 0 ? 1 : 0) // Include current game
+        });
+        
+        console.log('Badges returned from checkAndAwardBadges:', badges);
+        
+        if (badges.length > 0) {
+          setNewBadges(prev => [...prev, ...badges]);
+        }
+      } else {
+        console.log('No userId found for badge checking');
+      }
 
       // Show result immediately
       setGameState('results');
@@ -369,6 +449,30 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
               <strong>Streak:</strong> {streak} 🔥
             </p>
           </div>
+          
+          {/* New Badge Notifications */}
+          {newBadges.length > 0 && (
+            <div className="mb-6">
+              {newBadges.map((badge, index) => (
+                <div key={index} className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg p-4 mb-2 text-white animate-pulse">
+                  <div className="flex items-center justify-center space-x-3">
+                    <span className="text-2xl">{badge.icon}</span>
+                    <div>
+                      <p className="font-bold">Badge Earned!</p>
+                      <p className="text-sm opacity-90">{badge.name}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => setNewBadges([])}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Dismiss notifications
+              </button>
+            </div>
+          )}
+          
           {currentQuestion?.explanation && (
             <div className="bg-blue-50 rounded-lg p-4 text-left">
               <h4 className="font-semibold text-blue-900 mb-2">Explanation:</h4>

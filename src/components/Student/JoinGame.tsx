@@ -69,7 +69,7 @@ export const JoinGame: React.FC<JoinGameProps> = ({ onJoinGame, userId }) => {
       
       if (joinError) throw joinError;
 
-      onJoinGame({ ...session, participantId: participant.id });
+      onJoinGame({ ...session, participantId: participant.id, userId: actualUserId });
     } catch (error: any) {
       console.error('Error joining game:', error);
       setError(error.message);

@@ -11,6 +11,84 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
+// Ensure badges are seeded
+export const ensureBadgesExist = async () => {
+  const { data: existingBadges, error } = await supabase
+    .from('badges')
+    .select('*');
+  
+  if (error) {
+    console.error('Error checking badges:', error);
+    return;
+  }
+  
+  if (!existingBadges || existingBadges.length === 0) {
+    console.log('No badges found, seeding badges...');
+    const badgeData = [
+      {
+        name: 'First Steps',
+        description: 'Join your first quiz game',
+        icon: '🎯',
+        rarity: 'common',
+        requirement: 'Join 1 game',
+        points_value: 50
+      },
+      {
+        name: 'Quick Draw',
+        description: 'Answer a question in under 5 seconds',
+        icon: '⚡',
+        rarity: 'common',
+        requirement: 'Answer in <5s',
+        points_value: 100
+      },
+      {
+        name: 'Perfect Score',
+        description: 'Get 100% correct answers in a quiz',
+        icon: '💯',
+        rarity: 'rare',
+        requirement: 'Perfect score',
+        points_value: 500
+      },
+      {
+        name: 'Streak Master',
+        description: 'Get 10 correct answers in a row',
+        icon: '🔥',
+        rarity: 'rare',
+        requirement: '10 streak',
+        points_value: 300
+      },
+      {
+        name: 'Perfect Streak',
+        description: 'Maintain a 25 answer streak',
+        icon: '🚀',
+        rarity: 'epic',
+        requirement: '25 streak',
+        points_value: 1000
+      },
+      {
+        name: 'Knowledge Seeker',
+        description: 'Participate in 50 quiz games',
+        icon: '📚',
+        rarity: 'legendary',
+        requirement: '50 games',
+        points_value: 2000
+      }
+    ];
+    
+    const { error: insertError } = await supabase
+      .from('badges')
+      .insert(badgeData);
+    
+    if (insertError) {
+      console.error('Error seeding badges:', insertError);
+    } else {
+      console.log('Badges seeded successfully');
+    }
+  } else {
+    console.log('Badges already exist:', existingBadges.length);
+  }
+};
+
 // Auth helpers
 export const getCurrentUser = async () => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -233,6 +311,38 @@ export const getSessionLeaderboard = async (sessionId: string) => {
   return { data, error };
 };
 
+// User stats operations
+export const getUserStats = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('total_points, streak, level, name')
+    .eq('id', userId)
+    .single();
+  
+  return { data, error };
+};
+
+export const getUserGameHistory = async (userId: string, limit = 10) => {
+  const { data, error } = await supabase
+    .from('participants')
+    .select(`
+      score,
+      join_time,
+      game_sessions (
+        quiz_id,
+        ended_at,
+        quizzes (
+          title
+        )
+      )
+    `)
+    .eq('user_id', userId)
+    .order('join_time', { ascending: false })
+    .limit(limit);
+  
+  return { data, error };
+};
+
 export const getGlobalLeaderboard = async () => {
   const { data, error } = await supabase
     .from('users')
@@ -286,4 +396,144 @@ export const awardBadge = async (userId: string, badgeId: string, context: strin
     .single();
   
   return { data, error };
+};
+
+// Badge checking and awarding functions
+export const getBadgeByName = async (badgeName: string) => {
+  console.log('getBadgeByName called with:', badgeName);
+  const { data, error } = await supabase
+    .from('badges')
+    .select('*')
+    .eq('name', badgeName)
+    .single();
+  
+  console.log('getBadgeByName result:', { data, error });
+  return { data, error };
+};
+
+export const hasUserEarnedBadge = async (userId: string, badgeId: string) => {
+  console.log('hasUserEarnedBadge called with:', { userId, badgeId });
+  const { data, error } = await supabase
+    .from('achievements')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('badge_id', badgeId)
+    .maybeSingle(); // Use maybeSingle instead of single to handle no results gracefully
+  
+  console.log('hasUserEarnedBadge result:', { data, error, hasEarned: !!data });
+  
+  // If there's a 406 error, it might be an RLS issue, but we can still check if data exists
+  if (error && error.code !== 'PGRST116') {
+    console.warn('hasUserEarnedBadge error (but continuing):', error);
+  }
+  
+  return { data: !!data, error: error?.code === 'PGRST116' ? null : error };
+};
+
+export const checkAndAwardBadges = async (userId: string, context: {
+  gameCompleted?: boolean;
+  perfectScore?: boolean;
+  fastAnswers?: number;
+  streak?: number;
+  totalGames?: number;
+  answerTime?: number;
+  isFirstGame?: boolean;
+}) => {
+  console.log('checkAndAwardBadges called with:', { userId, context });
+  const badges = [];
+  
+  try {
+    // First Steps - Join your first quiz game
+    if (context.isFirstGame) {
+      console.log('Checking First Steps badge for first-time player');
+      const { data: badge, error: badgeError } = await getBadgeByName('First Steps');
+      console.log('First Steps badge lookup result:', { badge, badgeError });
+      
+      if (badge) {
+        const { data: hasEarned, error: earnedError } = await hasUserEarnedBadge(userId, badge.id);
+        console.log('First Steps earned check result:', { hasEarned, earnedError });
+        
+        if (!hasEarned) {
+          console.log('Awarding First Steps badge...');
+          const awardResult = await awardBadge(userId, badge.id, 'First game participation');
+          console.log('Award result:', awardResult);
+          
+          if (!awardResult.error) {
+            badges.push(badge);
+          } else {
+            console.error('Error awarding First Steps badge:', awardResult.error);
+          }
+        } else {
+          console.log('User already has First Steps badge');
+        }
+      } else {
+        console.log('First Steps badge not found in database');
+      }
+    }
+    
+    // Quick Draw - Answer a question in under 5 seconds
+    if (context.answerTime && context.answerTime < 5) {
+      const { data: badge } = await getBadgeByName('Quick Draw');
+      if (badge) {
+        const { data: hasEarned } = await hasUserEarnedBadge(userId, badge.id);
+        if (!hasEarned) {
+          await awardBadge(userId, badge.id, `Answered in ${context.answerTime}s`);
+          badges.push(badge);
+        }
+      }
+    }
+    
+    // Perfect Score - Get 100% correct answers in a quiz
+    if (context.perfectScore && context.gameCompleted) {
+      const { data: badge } = await getBadgeByName('Perfect Score');
+      if (badge) {
+        const { data: hasEarned } = await hasUserEarnedBadge(userId, badge.id);
+        if (!hasEarned) {
+          await awardBadge(userId, badge.id, 'Perfect score achieved');
+          badges.push(badge);
+        }
+      }
+    }
+    
+    // Streak Master - Get 10 correct answers in a row
+    if (context.streak && context.streak >= 10) {
+      const { data: badge } = await getBadgeByName('Streak Master');
+      if (badge) {
+        const { data: hasEarned } = await hasUserEarnedBadge(userId, badge.id);
+        if (!hasEarned) {
+          await awardBadge(userId, badge.id, `${context.streak} answer streak`);
+          badges.push(badge);
+        }
+      }
+    }
+    
+    // Perfect Streak - Maintain a 25 answer streak
+    if (context.streak && context.streak >= 25) {
+      const { data: badge } = await getBadgeByName('Perfect Streak');
+      if (badge) {
+        const { data: hasEarned } = await hasUserEarnedBadge(userId, badge.id);
+        if (!hasEarned) {
+          await awardBadge(userId, badge.id, `${context.streak} answer streak`);
+          badges.push(badge);
+        }
+      }
+    }
+    
+    // Knowledge Seeker - Participate in 50 quiz games
+    if (context.totalGames && context.totalGames >= 50) {
+      const { data: badge } = await getBadgeByName('Knowledge Seeker');
+      if (badge) {
+        const { data: hasEarned } = await hasUserEarnedBadge(userId, badge.id);
+        if (!hasEarned) {
+          await awardBadge(userId, badge.id, `${context.totalGames} games played`);
+          badges.push(badge);
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error checking/awarding badges:', error);
+  }
+  
+  return badges;
 };
