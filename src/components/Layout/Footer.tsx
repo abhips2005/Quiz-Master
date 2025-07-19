@@ -9,7 +9,7 @@ export const Footer: React.FC = () => {
             Made with{' '}
             <span className="text-red-500 text-base sm:text-lg">❤️</span>{' '}
             by{' '}
-            <span className="font-semibold text-purple-600">Abhijith S</span>
+            <span className="font-semibold text-purple-600"><a href="https://abhijiths.online/" target="_blank" rel="noopener noreferrer">Abhijith S</a></span>
           </p>
         </div>
       </div>
