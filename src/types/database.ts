@@ -227,6 +227,25 @@ export interface Database {
           context?: string;
         };
       };
+      security_violations: {
+        Row: {
+          id: string;
+          session_id: string;
+          participant_id: string;
+          violation_type: 'tab_switch' | 'right_click' | 'keyboard_shortcut' | 'dev_tools' | 'copy_paste' | 'focus_loss';
+          violation_count: number;
+          created_at: string;
+        };
+        Insert: {
+          session_id: string;
+          participant_id: string;
+          violation_type: 'tab_switch' | 'right_click' | 'keyboard_shortcut' | 'dev_tools' | 'copy_paste' | 'focus_loss';
+          violation_count?: number;
+        };
+        Update: {
+          violation_count?: number;
+        };
+      };
     };
   };
 }

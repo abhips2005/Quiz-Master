@@ -537,3 +537,116 @@ export const checkAndAwardBadges = async (userId: string, context: {
   
   return badges;
 };
+
+// Security Violation Functions
+export const recordSecurityViolation = async (
+  sessionId: string,
+  participantId: string,
+  violationType: 'tab_switch' | 'right_click' | 'keyboard_shortcut' | 'dev_tools' | 'copy_paste' | 'focus_loss'
+) => {
+  try {
+    // Check if a violation of this type already exists for this participant in this session
+    const { data: existing, error: selectError } = await supabase
+      .from('security_violations')
+      .select('*')
+      .eq('session_id', sessionId)
+      .eq('participant_id', participantId)
+      .eq('violation_type', violationType)
+      .single();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      throw selectError;
+    }
+
+    if (existing) {
+      // Update existing violation count
+      const { error: updateError } = await supabase
+        .from('security_violations')
+        .update({ 
+          violation_count: existing.violation_count + 1 
+        })
+        .eq('id', existing.id);
+      
+      if (updateError) throw updateError;
+    } else {
+      // Create new violation record
+      const { error: insertError } = await supabase
+        .from('security_violations')
+        .insert({
+          session_id: sessionId,
+          participant_id: participantId,
+          violation_type: violationType,
+          violation_count: 1
+        });
+      
+      if (insertError) throw insertError;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error recording security violation:', error);
+    return { success: false, error };
+  }
+};
+
+export const getSecurityViolationsForSession = async (sessionId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('security_violations')
+      .select(`
+        *,
+        participants!inner(nickname, user_id, users(name))
+      `)
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching security violations:', error);
+    return { data: null, error };
+  }
+};
+
+export const getFlaggedPlayersForSession = async (sessionId: string) => {
+  try {
+    const { data: violations, error } = await getSecurityViolationsForSession(sessionId);
+    
+    if (error || !violations) {
+      return { data: [], error };
+    }
+
+    // Group violations by participant
+    const participantViolations = violations.reduce((acc: any, violation: any) => {
+      const participantId = violation.participant_id;
+      if (!acc[participantId]) {
+        acc[participantId] = {
+          participant: violation.participants,
+          violations: [],
+          totalViolations: 0
+        };
+      }
+      acc[participantId].violations.push(violation);
+      acc[participantId].totalViolations += violation.violation_count;
+      return acc;
+    }, {});
+
+    // Filter for high-risk players (5+ violations) and format
+    const flaggedPlayers = Object.values(participantViolations)
+      .filter((player: any) => player.totalViolations >= 5)
+      .map((player: any) => ({
+        participant: player.participant,
+        totalViolations: player.totalViolations,
+        violations: player.violations,
+        riskLevel: player.totalViolations >= 15 ? 'severe' : 
+                   player.totalViolations >= 10 ? 'high' : 'medium'
+      }))
+      .sort((a: any, b: any) => b.totalViolations - a.totalViolations);
+
+    return { data: flaggedPlayers, error: null };
+  } catch (error) {
+    console.error('Error getting flagged players:', error);
+    return { data: [], error };
+  }
+};

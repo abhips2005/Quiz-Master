@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Trophy, Users, Zap, ArrowLeft } from 'lucide-react';
 import { supabase, getSessionLeaderboard, checkAndAwardBadges, getUserStats } from '../../lib/supabase';
 import { useRealtime } from '../../hooks/useRealtime';
+import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { Leaderboard } from '../Shared/Leaderboard';
 import { Footer } from '../Layout/Footer';
+import { SecurityWarning, QuizSecurityNotice } from '../Security/SecurityWarning';
 
 interface GamePlayProps {
   session: any;
@@ -26,6 +28,22 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
   const [newBadges, setNewBadges] = useState<any[]>([]);
   const [totalGamesPlayed, setTotalGamesPlayed] = useState(0);
   const [isFirstGame, setIsFirstGame] = useState(false);
+  const [suspiciousActivities, setSuspiciousActivities] = useState<string[]>([]);
+
+  // Enable anti-cheating protection during active gameplay
+  const { suspiciousActivityCount } = useAntiCheating({
+    sessionId: session.id,
+    participantId: session.participantId,
+    disableDevTools: gameState === 'question',
+    disableRightClick: gameState === 'question',
+    disableTextSelection: gameState === 'question',
+    disablePrintScreen: gameState === 'question',
+    onSuspiciousActivity: (activity) => {
+      setSuspiciousActivities(prev => [...prev, activity]);
+      // Log suspicious activity to backend (could be implemented)
+      console.warn('Cheating attempt detected:', activity);
+    }
+  });
 
   useEffect(() => {
     // Load user data to check if this is their first game
@@ -403,6 +421,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
             <span className="hidden sm:inline">•</span>
             <span className="truncate max-w-full">Quiz: <strong>{session.quizzes?.title}</strong></span>
           </div>
+          
+          {/* Security Notice */}
+          <div className="mt-6">
+            <QuizSecurityNotice />
+          </div>
+          
           <button
             onClick={onLeave}
             className="mt-4 sm:mt-6 btn-secondary flex items-center space-x-2 mx-auto text-sm sm:text-base"
@@ -419,7 +443,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
 
   if (gameState === 'question' && currentQuestion) {
     return (
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 quiz-content">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between mb-4 sm:mb-6 gap-2">
           <div className="flex items-center space-x-2 sm:space-x-4">
@@ -437,6 +461,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
             <span className="font-bold text-red-800 text-lg sm:text-xl">{timeLeft}s</span>
           </div>
         </div>
+
+        {/* Security Warning */}
+        <SecurityWarning 
+          isQuizActive={gameState === 'question'} 
+          suspiciousActivityCount={suspiciousActivities.length} 
+        />
 
         {/* Question */}
         <div className="bg-white rounded-xl p-4 sm:p-8 card-shadow mb-4 sm:mb-6">

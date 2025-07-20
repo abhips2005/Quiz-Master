@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { supabase, ensureBadgesExist } from './lib/supabase';
+import { LandingPage } from './components/Landing/LandingPage';
 import { AuthForm } from './components/Auth/AuthForm';
 import { Header } from './components/Layout/Header';
 import { TeacherDashboard } from './components/Teacher/TeacherDashboard';
@@ -10,6 +11,8 @@ function App() {
   const { user, loading } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
 
   useEffect(() => {
     if (user) {
@@ -59,6 +62,25 @@ function App() {
     }
   };
 
+  const handleGetStarted = () => {
+    setAuthMode('signup');
+    setShowAuth(true);
+  };
+
+  const handleSignIn = () => {
+    setAuthMode('login');
+    setShowAuth(true);
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuth(false);
+    window.location.reload();
+  };
+
+  const handleBackToLanding = () => {
+    setShowAuth(false);
+  };
+
   if (loading || profileLoading) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -71,7 +93,10 @@ function App() {
   }
 
   if (!user) {
-    return <AuthForm onSuccess={() => window.location.reload()} />;
+    if (showAuth) {
+      return <AuthForm onSuccess={handleAuthSuccess} initialMode={authMode} onBack={handleBackToLanding} />;
+    }
+    return <LandingPage onGetStarted={handleGetStarted} onSignIn={handleSignIn} />;
   }
 
   return (

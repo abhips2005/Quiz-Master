@@ -4,6 +4,7 @@ import { supabase, getSessionLeaderboard } from '../../lib/supabase';
 import { GameSession, Participant } from '../../types';
 import { useRealtime } from '../../hooks/useRealtime';
 import { Leaderboard } from '../Shared/Leaderboard';
+import { FlaggedPlayers } from './FlaggedPlayers';
 import { Footer } from '../Layout/Footer';
 
 interface GameLobbyProps {
@@ -319,6 +320,11 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
 
           {/* Final Leaderboard */}
           <Leaderboard participants={leaderboardData} title="Final Results" />
+
+          {/* Security Violations Report */}
+          <div className="mt-6">
+            <FlaggedPlayers sessionId={session.id} />
+          </div>
 
           {/* Action Buttons */}
           <div className="mt-6 bg-white rounded-xl p-6 card-shadow">

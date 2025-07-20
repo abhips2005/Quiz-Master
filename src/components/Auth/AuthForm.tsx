@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { signInWithEmail, signUpWithEmail } from '../../lib/supabase';
-import { User, Lock, Mail, UserPlus } from 'lucide-react';
+import { User, Lock, Mail, UserPlus, ArrowLeft } from 'lucide-react';
 import { Footer } from '../Layout/Footer';
 
 interface AuthFormProps {
   onSuccess: () => void;
+  initialMode?: 'login' | 'signup';
+  onBack?: () => void;
 }
 
-export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
-  const [isLogin, setIsLogin] = useState(true);
+export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialMode = 'login', onBack }) => {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -42,6 +44,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
     <div className="min-h-screen gradient-bg flex flex-col">
       <div className="flex-1 flex items-center justify-center py-8 px-4 sm:py-12 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-6 sm:space-y-8">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center space-x-2 text-white hover:text-purple-100 transition-colors mb-4"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to home</span>
+            </button>
+          )}
+          
           <div className="text-center">
             <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 bg-white rounded-full flex items-center justify-center mb-4 sm:mb-6">
               <UserPlus className="h-8 w-8 sm:h-10 sm:w-10 text-purple-600" />
