@@ -230,7 +230,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn
                       Be an Early Adopter
                     </button>
                     <a
-                      href="mailto:feedback@quizmasterlive.com"
+                      href="mailto:abhips1108@gmail.com"
                       className="text-purple-600 hover:text-purple-700 font-medium px-6 py-3 border border-purple-200 rounded-lg hover:border-purple-300 transition-colors"
                     >
                       Share Feedback
