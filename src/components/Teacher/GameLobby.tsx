@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Play, Users, Settings, Copy, Check, RefreshCw } from 'lucide-react';
-import { supabase, getSessionLeaderboard } from '../../lib/supabase';
+import { supabase, getSessionLeaderboard, recordGameSessionScore } from '../../lib/supabase';
 import { GameSession, Participant } from '../../types';
 import { useRealtime } from '../../hooks/useRealtime';
 import { Leaderboard } from '../Shared/Leaderboard';
@@ -48,6 +48,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
           nickname: p.nickname,
           score: p.score,
           user_id: p.user_id,
+          current_question_index: p.current_question_index,
           users: p.users
         });
       });
@@ -106,29 +107,11 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
     }
   };
 
+  // Individual question progression - no longer need global auto-advance
   const checkAllAnswered = useCallback(async () => {
-    if (!autoAdvance || participants.length === 0 || !gameStarted) return false;
-
-    try {
-      const { data: answeredParticipants, error } = await supabase
-        .from('participants')
-        .select('id, last_answered_question')
-        .eq('session_id', session.id)
-        .gte('last_answered_question', currentQuestionIndex);
-
-      if (error) throw error;
-
-      // If all participants have answered the current question
-      if (answeredParticipants && answeredParticipants.length >= participants.length) {
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error checking if all answered:', error);
-      return false;
-    }
-  }, [autoAdvance, participants.length, gameStarted, session.id, currentQuestionIndex]);
+    // This function is no longer used since each player advances individually
+    return false;
+  }, []);
 
   const handleEndGame = useCallback(async () => {
     try {
@@ -141,6 +124,41 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
         .eq('id', session.id);
 
       if (error) throw error;
+      
+      // Record scores for cumulative leaderboard
+      console.log('Recording session scores for cumulative leaderboard...');
+      try {
+        await recordGameSessionScore(session.id);
+        console.log('Session scores recorded successfully');
+      } catch (scoreError) {
+        console.error('Error recording session scores:', scoreError);
+        // Don't fail the entire operation if score recording fails
+      }
+      
+      // Also record scores for any participants who haven't been recorded yet
+      try {
+        const { data: participants } = await supabase
+          .from('participants')
+          .select('user_id, score')
+          .eq('session_id', session.id)
+          .not('user_id', 'is', null);
+        
+        if (participants) {
+          const { recordSessionScore } = await import('../../lib/supabase');
+          for (const participant of participants) {
+            if (participant.user_id && participant.score > 0) {
+              try {
+                await recordSessionScore(participant.user_id, session.id, participant.score);
+                console.log(`Recorded score for user ${participant.user_id}: ${participant.score}`);
+              } catch (error) {
+                console.error(`Failed to record score for user ${participant.user_id}:`, error);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error recording individual participant scores:', error);
+      }
       
       // Fetch final leaderboard data
       console.log('Fetching leaderboard for session:', session.id);
@@ -194,53 +212,23 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
     }
   }, [quiz, currentQuestionIndex, session.id, handleEndGame, setCurrentQuestionIndex, setQuestionStartTime, setShowResults]);
 
+  // Individual question progression - no longer need global auto-advance
   const autoAdvanceIfReady = useCallback(async () => {
-    const shouldAdvance = await checkAllAnswered();
-    
-    if (shouldAdvance) {
-      // Show results and advance immediately
-      setShowResults(true);
-      
-      // Auto advance with minimal delay
-      setTimeout(() => {
-        handleNextQuestion();
-      }, 100); // Reduced to just 100ms
-    }
-  }, [checkAllAnswered, handleNextQuestion, setShowResults]);
+    // This function is no longer used since each player advances individually
+  }, []);
 
-  // Timeout mechanism - auto advance after question time limit + buffer
-  useEffect(() => {
-    if (!gameStarted || !questionStartTime || !quiz || !autoAdvance) return;
-
-    const currentQuestion = quiz.questions[currentQuestionIndex];
-    if (!currentQuestion) return;
-
-    const timeoutDuration = (currentQuestion.time_limit + 5) * 1000; // Question time + 5 second buffer
-
-    const timeout = setTimeout(() => {
-      setShowResults(true);
-      
-      setTimeout(() => {
-        handleNextQuestion();
-      }, 500); // Reduced to 500ms
-    }, timeoutDuration);
-
-    return () => clearTimeout(timeout);
-  }, [questionStartTime, currentQuestionIndex, gameStarted, quiz, autoAdvance]);  
+  // Individual question progression - no longer need global timeout mechanism
+  // Each player has their own timer and advances individually  
   
-  // Subscribe to real-time updates with stable callback
+  // Subscribe to real-time updates for participant list only
   const handleRealtimeUpdate = useCallback((payload: any) => {
     console.log('Real-time update received:', payload.eventType, payload);
     
     // Always update participant list when there's any change
     loadParticipants();
     
-    // Only handle participant updates during the game for answer checking
-    if (gameStarted && payload.eventType === 'UPDATE') {
-      console.log('Participant updated during game, checking auto-advance');
-      autoAdvanceIfReady();
-    }
-  }, [loadParticipants, gameStarted, autoAdvanceIfReady]);
+    // No longer need auto-advance logic since each player advances individually
+  }, [loadParticipants]);
 
   useRealtime(
     `participants_${session.id}`,
@@ -438,12 +426,17 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
           )}
         </div>
 
-        {/* Participants Status */}
-        <div className="bg-white rounded-xl p-6 card-shadow mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">
-              Participants ({participants.length})
-            </h3>
+                 {/* Participants Status */}
+         <div className="bg-white rounded-xl p-6 card-shadow mb-6">
+           <div className="flex items-center justify-between mb-4">
+             <h3 className="text-xl font-semibold text-gray-900">
+               Participants ({participants.length})
+             </h3>
+             {quiz && (
+               <div className="text-sm text-gray-600">
+                 {participants.filter(p => (p.current_question_index || 0) >= quiz.questions.length).length} / {participants.length} completed
+               </div>
+             )}
             <div className="flex items-center space-x-4">
               {lastUpdate && (
                 <span className="text-xs text-gray-500">
@@ -459,29 +452,57 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ session, onClose }) => {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {participants.map((participant) => (
-              <div key={participant.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <span className="text-purple-600 font-semibold">
-                      {(participant.users?.name || participant.nickname).charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {participant.users?.name || participant.nickname}
-                    </p>
-                    {participant.users?.name && (
-                      <p className="text-xs text-gray-400">@{participant.nickname}</p>
-                    )}
-                    <p className="text-sm text-gray-500">Score: {participant.score}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+             {participants.map((participant) => (
+               <div key={participant.id} className="border border-gray-200 rounded-lg p-4">
+                 <div className="flex items-center space-x-3">
+                   <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
+                     <span className="text-purple-600 font-semibold">
+                       {(participant.users?.name || participant.nickname).charAt(0).toUpperCase()}
+                     </span>
+                   </div>
+                   <div>
+                     <p className="font-medium text-gray-900">
+                       {participant.users?.name || participant.nickname}
+                     </p>
+                     {participant.users?.name && (
+                       <p className="text-xs text-gray-400">@{participant.nickname}</p>
+                     )}
+                                           <p className="text-sm text-gray-500">Score: {participant.score}</p>
+                      <p className="text-xs text-blue-600">
+                        Question: {participant.current_question_index || 0} / {quiz?.questions?.length || 0}
+                      </p>
+                      {(participant.current_question_index || 0) >= (quiz?.questions?.length || 0) && (
+                        <p className="text-xs text-green-600 font-medium">
+                          ✅ Completed - Waiting for others
+                        </p>
+                      )}
+                   </div>
+                 </div>
+               </div>
+             ))}
+           </div>
         </div>
+
+        {/* Results Announcement */}
+        {participants.some(p => (p.current_question_index || 0) >= (quiz?.questions?.length || 0)) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 card-shadow mb-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="h-8 w-8 bg-yellow-400 rounded-full flex items-center justify-center">
+                <span className="text-yellow-800 text-sm font-bold">!</span>
+              </div>
+              <h3 className="text-lg font-semibold text-yellow-800">Results Will Be Announced Soon</h3>
+            </div>
+            <p className="text-yellow-700 text-sm mb-4">
+              Some participants have completed the quiz. The final leaderboard will be displayed once all participants finish.
+            </p>
+            <div className="bg-white rounded-lg p-3">
+              <p className="text-sm text-gray-600">
+                <strong>Completed:</strong> {participants.filter(p => (p.current_question_index || 0) >= (quiz?.questions?.length || 0)).length} / {participants.length} participants
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Game Stats */}
         <div className="bg-white rounded-xl p-6 card-shadow">

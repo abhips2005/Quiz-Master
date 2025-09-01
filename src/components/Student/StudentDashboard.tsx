@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Trophy, Target, Zap, Star, Clock, Award } from 'lucide-react';
 import { JoinGame } from './JoinGame';
 import { GamePlay } from './GamePlay';
@@ -23,6 +24,7 @@ interface GameHistory {
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) => {
+  const navigate = useNavigate();
   const [currentGame, setCurrentGame] = useState<GameSession | null>(null);
   const [userStats, setUserStats] = useState<{
     total_points: number;
@@ -223,16 +225,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) =>
         </div>
       </div>
 
-      {/* Leaderboard */}
-      <div className="mt-8 bg-white rounded-xl p-6 card-shadow">
+      {/* Cumulative Leaderboard Link */}
+      <div className="mt-8 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 card-shadow border border-purple-200">
         <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Trophy className="h-5 w-5 mr-2" />
-          Global Leaderboard
+          <Trophy className="h-5 w-5 mr-2 text-purple-600" />
+          Cumulative Leaderboard
         </h3>
-        <div className="text-center py-8">
-          <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Leaderboard coming soon</p>
-          <p className="text-sm text-gray-500 mt-1">Compete with students from around the world</p>
+        <div className="text-center py-6">
+          <div className="h-16 w-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Trophy className="h-8 w-8 text-white" />
+          </div>
+          <p className="text-gray-700 mb-4">See how you rank against other students across all quiz sessions!</p>
+          <p className="text-sm text-gray-600 mb-6">Your scores from every quiz session contribute to your total ranking</p>
+          <button
+            onClick={() => navigate('/competition')}
+            className="btn-primary px-6 py-3 text-base font-medium"
+          >
+            View Leaderboard
+          </button>
         </div>
       </div>
       

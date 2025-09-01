@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { supabase, ensureBadgesExist } from './lib/supabase';
 import { LandingPage } from './components/Landing/LandingPage';
@@ -6,6 +7,9 @@ import { AuthForm } from './components/Auth/AuthForm';
 import { Header } from './components/Layout/Header';
 import { TeacherDashboard } from './components/Teacher/TeacherDashboard';
 import { StudentDashboard } from './components/Student/StudentDashboard';
+import { CompetitionDashboard } from './components/Shared/CompetitionDashboard';
+import { GamePlay } from './components/Student/GamePlay';
+import { GameLobby } from './components/Teacher/GameLobby';
 
 function App() {
   const { user, loading } = useAuth();
@@ -100,16 +104,26 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header user={user} userProfile={userProfile} />
-      <main className="pb-safe">
-        {userProfile?.role === 'teacher' ? (
-          <TeacherDashboard userId={user.id} />
-        ) : (
-          <StudentDashboard userId={user.id} />
-        )}
-      </main>
-    </div>
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <Header user={user} userProfile={userProfile} />
+        <main className="pb-safe">
+          <Routes>
+            <Route path="/" element={
+              userProfile?.role === 'teacher' ? (
+                <TeacherDashboard userId={user.id} />
+              ) : (
+                <StudentDashboard userId={user.id} />
+              )
+            } />
+            <Route path="/competition" element={<CompetitionDashboard />} />
+            <Route path="/game/:sessionId" element={<GamePlay />} />
+            <Route path="/lobby/:sessionId" element={<GameLobby />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 

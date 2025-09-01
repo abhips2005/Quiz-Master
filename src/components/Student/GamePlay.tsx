@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Trophy, Users, Zap, ArrowLeft } from 'lucide-react';
-import { supabase, getSessionLeaderboard, checkAndAwardBadges, getUserStats } from '../../lib/supabase';
+import { supabase, getSessionLeaderboard, checkAndAwardBadges, getUserStats, recordGameSessionScore } from '../../lib/supabase';
 import { useRealtime } from '../../hooks/useRealtime';
 import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { Leaderboard } from '../Shared/Leaderboard';
@@ -13,7 +13,7 @@ interface GamePlayProps {
 }
 
 export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
-  const [gameState, setGameState] = useState<'waiting' | 'playing' | 'question' | 'results' | 'ended'>('waiting');
+  const [gameState, setGameState] = useState<'waiting' | 'playing' | 'question' | 'results' | 'waiting_for_others' | 'ended'>('waiting');
   const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -74,12 +74,40 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
     // Check if game is already active when component loads
     if (session.status === 'active') {
       setGameState('playing');
-      const questionIndex = session.current_question || 0;
-      loadCurrentQuestion(questionIndex);
-      setCurrentQuestionIndex(questionIndex);
+      
+      // Load the player's individual current question
+      const loadPlayerQuestion = async () => {
+        try {
+          const { data: participant } = await supabase
+            .from('participants')
+            .select('current_question_index')
+            .eq('id', session.participantId)
+            .single();
+          
+          if (participant) {
+            const questionIndex = participant.current_question_index || 0;
+            console.log('Loading player\'s individual question at index:', questionIndex);
+            loadCurrentQuestion(questionIndex);
+            setCurrentQuestionIndex(questionIndex);
+          } else {
+            // Fallback to session question if participant not found
+            const questionIndex = session.current_question || 0;
+            loadCurrentQuestion(questionIndex);
+            setCurrentQuestionIndex(questionIndex);
+          }
+        } catch (error) {
+          console.error('Error loading player question:', error);
+          // Fallback to session question
+          const questionIndex = session.current_question || 0;
+          loadCurrentQuestion(questionIndex);
+          setCurrentQuestionIndex(questionIndex);
+        }
+      };
+      
+      loadPlayerQuestion();
     }
 
-    // Polling mechanism as fallback
+    // Polling mechanism as fallback for game status changes only
     const pollInterval = setInterval(async () => {
       try {
         const { data: updatedSession, error } = await supabase
@@ -94,7 +122,18 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
         
         if (updatedSession.status === 'active' && gameState === 'waiting') {
           setGameState('playing');
-          loadCurrentQuestion(updatedSession.current_question || 0);
+          // Load player's individual question
+          const { data: participant } = await supabase
+            .from('participants')
+            .select('current_question_index')
+            .eq('id', session.participantId)
+            .single();
+          
+          if (participant) {
+            const questionIndex = participant.current_question_index || 0;
+            loadCurrentQuestion(questionIndex);
+            setCurrentQuestionIndex(questionIndex);
+          }
         } else if (updatedSession.status === 'completed' && gameState !== 'ended') {
           // Load final leaderboard when game ends
           const { data: leaderboardData } = await getSessionLeaderboard(session.id);
@@ -133,12 +172,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
           setGameState('ended');
         }
         
-        // Check for question progression
-        if (updatedSession.current_question !== currentQuestionIndex && 
-            (gameState === 'question' || gameState === 'results' || gameState === 'playing')) {
-          loadCurrentQuestion(updatedSession.current_question || 0);
-          setCurrentQuestionIndex(updatedSession.current_question || 0);
-        }
+        // No longer check for global question progression - each player advances individually
       } catch (error) {
         console.error('Error in polling:', error);
       }
@@ -157,31 +191,35 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
     }
   );
 
-  // Additional fast polling specifically for question changes
+  // Polling mechanism for waiting for others to complete
   useEffect(() => {
-    if (gameState === 'results' || gameState === 'question') {
-      const fastPoll = setInterval(async () => {
+    if (gameState === 'waiting_for_others') {
+      const checkCompletionInterval = setInterval(async () => {
         try {
-          const { data: updatedSession } = await supabase
-            .from('game_sessions')
-            .select('current_question, status')
-            .eq('id', session.id)
-            .single();
+          const { data: allParticipants } = await supabase
+            .from('participants')
+            .select('current_question_index')
+            .eq('session_id', session.id);
+          
+          if (allParticipants && cachedQuizData) {
+            const totalQuestions = cachedQuizData.questions.length;
+            const allCompleted = allParticipants.every(p => 
+              (p.current_question_index || 0) >= totalQuestions
+            );
             
-          if (updatedSession && updatedSession.current_question !== currentQuestionIndex) {
-            loadCurrentQuestion(updatedSession.current_question || 0);
-            setCurrentQuestionIndex(updatedSession.current_question || 0);
+            if (allCompleted) {
+              console.log('All participants completed, transitioning to ended state');
+              setGameState('ended');
+            }
           }
         } catch (error) {
-          console.error('Fast poll error:', error);
+          console.error('Error checking completion status:', error);
         }
-      }, 200); // Very fast polling every 200ms when in question/results state
-      
-      return () => {
-        clearInterval(fastPoll);
-      };
+      }, 2000); // Check every 2 seconds
+
+      return () => clearInterval(checkCompletionInterval);
     }
-  }, [gameState, currentQuestionIndex]);
+  }, [gameState, session.id, cachedQuizData]);
 
   const handleGameUpdate = (payload: any) => {
     if (payload.eventType === 'UPDATE') {
@@ -189,9 +227,35 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
       
       if (updatedSession.status === 'active') {
         setGameState('playing');
-        loadCurrentQuestion(updatedSession.current_question || 0);
-        setCurrentQuestionIndex(updatedSession.current_question || 0);
+        // Load player's individual question
+        const loadPlayerQuestion = async () => {
+          try {
+            const { data: participant } = await supabase
+              .from('participants')
+              .select('current_question_index')
+              .eq('id', session.participantId)
+              .single();
+            
+            if (participant) {
+              const questionIndex = participant.current_question_index || 0;
+              loadCurrentQuestion(questionIndex);
+              setCurrentQuestionIndex(questionIndex);
+            }
+          } catch (error) {
+            console.error('Error loading player question in real-time update:', error);
+          }
+        };
+        
+        loadPlayerQuestion();
       } else if (updatedSession.status === 'completed') {
+        // Record scores for cumulative leaderboard
+        console.log('Recording session scores for cumulative leaderboard...');
+        recordGameSessionScore(session.id).then((result) => {
+          console.log('Session scores recorded:', result);
+        }).catch((error) => {
+          console.error('Error recording session scores:', error);
+        });
+        
         // Load final leaderboard when game ends
         getSessionLeaderboard(session.id).then(({ data: leaderboardData }) => {
           if (leaderboardData) {
@@ -230,17 +294,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
         setGameState('ended');
       }
       
-      // Handle question progression - only load if question index actually changed
-      if (updatedSession.current_question !== undefined && 
-          updatedSession.current_question !== currentQuestionIndex) {
-        loadCurrentQuestion(updatedSession.current_question);
-        setCurrentQuestionIndex(updatedSession.current_question);
-      }
+      // No longer handle global question progression - each player advances individually
     }
   };
 
   const loadCurrentQuestion = async (questionIndex: number) => {
     try {
+      console.log('Loading question at index:', questionIndex, 'current index:', currentQuestionIndex);
+      
+      // Prevent loading the same question multiple times
+      if (questionIndex === currentQuestionIndex && gameState === 'question') {
+        console.log('Skipping question load - same index and already in question state');
+        return;
+      }
+      
       // Clear any existing results timeout
       if (resultsTimeoutRef.current) {
         clearTimeout(resultsTimeoutRef.current);
@@ -266,6 +333,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
       const question = sortedQuestions[questionIndex];
       
       if (question) {
+        console.log('Setting question:', question.question.substring(0, 50) + '...');
         // Immediately set the state to question to override any results state
         setCurrentQuestion(question);
         setTimeLeft(question.time_limit);
@@ -319,8 +387,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
         .update({
           score: newScore,
           streak: isCorrect ? streak + 1 : 0,
-          // Track which question was last answered for auto-progression
-          last_answered_question: currentQuestion.order_index
+          // Track which question was last answered for individual progression
+          last_answered_question: currentQuestion.order_index,
+          // Add individual question progress tracking
+          current_question_index: currentQuestionIndex + 1
         })
         .eq('id', session.participantId);
 
@@ -370,6 +440,93 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
 
       // Show result immediately
       setGameState('results');
+      
+      // Auto-advance to next question immediately for this player
+      resultsTimeoutRef.current = setTimeout(() => {
+        console.log('Auto-advancing to next question for individual player');
+        const nextQuestionIndex = currentQuestionIndex + 1;
+        
+        // Check if there are more questions
+        if (cachedQuizData && nextQuestionIndex < cachedQuizData.questions.length) {
+          loadCurrentQuestion(nextQuestionIndex);
+          setCurrentQuestionIndex(nextQuestionIndex);
+        } else {
+          // Game is complete for this player
+          console.log('Game complete for this player');
+          
+          // Check if this is the last question and determine next state
+          const checkAndDetermineNextState = async () => {
+            try {
+              // Check if all participants have completed the quiz
+              const { data: allParticipants } = await supabase
+                .from('participants')
+                .select('current_question_index')
+                .eq('session_id', session.id);
+              
+              if (allParticipants) {
+                const totalQuestions = cachedQuizData.questions.length;
+                const allCompleted = allParticipants.every(p => 
+                  (p.current_question_index || 0) >= totalQuestions
+                );
+                
+                // For single player, go directly to ended state
+                if (allParticipants.length === 1) {
+                  console.log('Single player detected, completing session immediately');
+                  await completeSession();
+                  setGameState('ended');
+                } else if (allCompleted) {
+                  // All participants have completed
+                  console.log('All participants completed, completing session');
+                  await completeSession();
+                  setGameState('ended');
+                } else {
+                  // Some participants are still playing, show waiting screen
+                  console.log('Some participants still playing, showing waiting screen');
+                  setGameState('waiting_for_others');
+                }
+              }
+            } catch (error) {
+              console.error('Error checking session completion:', error);
+              // Fallback to ended state
+              setGameState('ended');
+            }
+          };
+          
+          // Function to complete the session and record scores
+          const completeSession = async () => {
+            try {
+              // Mark the session as completed
+              const { error: sessionError } = await supabase
+                .from('game_sessions')
+                .update({ 
+                  status: 'completed',
+                  ended_at: new Date().toISOString()
+                })
+                .eq('id', session.id);
+              
+              if (sessionError) {
+                console.error('Error marking session as completed:', sessionError);
+              } else {
+                console.log('Session marked as completed successfully');
+                
+                // Record scores for cumulative leaderboard
+                console.log('Recording session scores for cumulative leaderboard...');
+                try {
+                  const { recordGameSessionScore } = await import('../../lib/supabase');
+                  await recordGameSessionScore(session.id);
+                  console.log('Session scores recorded successfully');
+                } catch (scoreError) {
+                  console.error('Error recording session scores:', scoreError);
+                }
+              }
+            } catch (error) {
+              console.error('Error completing session:', error);
+            }
+          };
+          
+          checkAndDetermineNextState();
+        }
+      }, 1000); // Show results for 1 second before advancing
 
     } catch (error) {
       console.error('Error submitting answer:', error);
@@ -558,6 +715,52 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
     );
   }
 
+  if (gameState === 'waiting_for_others') {
+    return (
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-8 sm:py-16 text-center">
+        <div className="bg-white rounded-xl p-6 sm:p-8 card-shadow">
+          <div className="pulse-animation mb-4 sm:mb-6">
+            <div className="h-16 w-16 sm:h-20 sm:w-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
+            </div>
+          </div>
+          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">Quiz Complete!</h2>
+          
+          {/* Individual Score Display */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 mb-6">
+            <div className="text-3xl sm:text-4xl font-bold text-green-600 mb-2">{score}</div>
+            <div className="text-lg text-gray-700">Your Score</div>
+          </div>
+          
+          <div className="bg-blue-50 rounded-lg p-4 mb-6">
+            <p className="text-blue-800 text-sm sm:text-base">
+              <strong>Waiting for other participants to finish...</strong>
+            </p>
+            <p className="text-blue-600 text-xs sm:text-sm mt-2">
+              Results will be announced once everyone completes the quiz.
+            </p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm text-gray-500">
+            <span>Game PIN: <strong>{session.pin}</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <span className="truncate max-w-full">Quiz: <strong>{session.quizzes?.title}</strong></span>
+          </div>
+          
+          <button
+            onClick={onLeave}
+            className="mt-6 btn-secondary flex items-center space-x-2 mx-auto text-sm sm:text-base"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Leave Game</span>
+          </button>
+        </div>
+        
+        <Footer />
+      </div>
+    );
+  }
+
   if (gameState === 'ended') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-4">
@@ -580,11 +783,36 @@ export const GamePlay: React.FC<GamePlayProps> = ({ session, onLeave }) => {
             </div>
           </div>
 
-          {/* Final Leaderboard */}
-          <Leaderboard participants={finalLeaderboard} title="Final Results" />
+          {/* Individual Score Card */}
+          <div className="bg-white rounded-xl p-8 card-shadow mb-6 text-center">
+            <div className="mb-6">
+              <div className="h-20 w-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trophy className="h-10 w-10 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Congratulations!</h2>
+              <p className="text-gray-600 text-lg">You completed the quiz successfully</p>
+            </div>
+            
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 mb-6">
+              <div className="text-4xl font-bold text-purple-600 mb-2">{score}</div>
+              <div className="text-lg text-gray-700">Total Points</div>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <div className="h-6 w-6 bg-yellow-400 rounded-full flex items-center justify-center">
+                  <span className="text-yellow-800 text-sm font-bold">!</span>
+                </div>
+                <h3 className="text-lg font-semibold text-yellow-800">Results Will Be Announced Soon</h3>
+              </div>
+              <p className="text-yellow-700 text-sm">
+                The final leaderboard and rankings will be displayed once all participants complete the quiz.
+              </p>
+            </div>
+          </div>
 
           {/* Action Buttons */}
-          <div className="mt-6 bg-white rounded-xl p-6 card-shadow">
+          <div className="bg-white rounded-xl p-6 card-shadow">
             <div className="flex justify-center space-x-4">
               <button
                 onClick={onLeave}

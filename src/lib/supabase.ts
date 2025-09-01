@@ -279,6 +279,7 @@ export const joinGameSession = async (sessionId: string, nickname: string, userI
       streak: 0,
       position: 0,
       is_active: true,
+      current_question_index: 0, // Initialize individual question progress
     }])
     .select()
     .single();
@@ -650,3 +651,147 @@ export const getFlaggedPlayersForSession = async (sessionId: string) => {
     return { data: [], error };
   }
 };
+
+// Cumulative Score Operations
+export const recordSessionScore = async (
+  userId: string,
+  sessionId: string,
+  sessionScore: number
+) => {
+  try {
+    // Check if score already exists for this user and session
+    const { data: existingScore } = await supabase
+      .from('session_scores')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    if (existingScore) {
+      // Update existing score
+      const { data, error } = await supabase
+        .from('session_scores')
+        .update({ session_score: sessionScore })
+        .eq('id', existingScore.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { data, error: null };
+    } else {
+      // Insert new score
+      const { data, error } = await supabase
+        .from('session_scores')
+        .insert([{
+          user_id: userId,
+          session_id: sessionId,
+          session_score: sessionScore
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { data, error: null };
+    }
+  } catch (error) {
+    console.error('Error recording session score:', error);
+    return { data: null, error };
+  }
+};
+
+export const getCumulativeLeaderboard = async (limit = 10) => {
+  const { data, error } = await supabase
+    .rpc('get_cumulative_leaderboard', { limit_count: limit });
+  
+  return { data, error };
+};
+
+export const getUserSessionHistory = async (userId: string, limit = 10) => {
+  const { data, error } = await supabase
+    .rpc('get_user_session_history', { 
+      user_uuid: userId, 
+      limit_count: limit 
+    });
+  
+  return { data, error };
+};
+
+export const getUserCumulativeStats = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('cumulative_scores')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  return { data, error };
+};
+
+// Function to record session scores when a game session is completed
+export const recordGameSessionScore = async (sessionId: string) => {
+  try {
+    // Get the game session details
+    const { data: session, error: sessionError } = await supabase
+      .from('game_sessions')
+      .select(`
+        id,
+        quiz_id,
+        teacher_id,
+        status,
+        participants (
+          id,
+          user_id,
+          score,
+          nickname
+        )
+      `)
+      .eq('id', sessionId)
+      .single();
+
+    if (sessionError) throw sessionError;
+    if (!session || session.status !== 'completed') {
+      throw new Error('Session not found or not completed');
+    }
+
+    // Record scores for each participant
+    const scorePromises = session.participants
+      .filter(participant => participant.score > 0) // Record for all participants with scores
+      .map(async (participant) => {
+        try {
+          if (participant.user_id) {
+            // Record for registered users
+            await recordSessionScore(
+              participant.user_id,
+              sessionId,
+              participant.score
+            );
+            return { userId: participant.user_id, success: true, type: 'registered' };
+          } else {
+            // For anonymous users, we can't record in cumulative leaderboard
+            // but we can log that they completed the session
+            console.log(`Anonymous participant ${participant.nickname} completed with score ${participant.score}`);
+            return { userId: null, success: true, type: 'anonymous', nickname: participant.nickname };
+          }
+        } catch (error) {
+          console.error(`Failed to record score for participant ${participant.user_id || participant.nickname}:`, error);
+          return { userId: participant.user_id, success: false, error };
+        }
+      });
+
+    const results = await Promise.all(scorePromises);
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    console.log(`Session scores recorded: ${successful} successful, ${failed} failed`);
+
+    return {
+      success: true,
+      message: `Session scores recorded for ${successful} participants`,
+      results
+    };
+
+  } catch (error) {
+    console.error('Error recording session scores:', error);
+    throw error;
+  }
+};
+

@@ -246,6 +246,54 @@ export interface Database {
           violation_count?: number;
         };
       };
+      session_scores: {
+        Row: {
+          id: string;
+          user_id: string;
+          session_id: string;
+          session_score: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          session_id: string;
+          session_score?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          session_id?: string;
+          session_score?: number;
+          created_at?: string;
+        };
+      };
+      cumulative_scores: {
+        Row: {
+          id: string;
+          user_id: string;
+          total_score: number;
+          sessions_participated: number;
+          best_session_score: number;
+          average_session_score: number;
+          last_updated: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          total_score?: number;
+          sessions_participated?: number;
+          best_session_score?: number;
+          average_session_score?: number;
+        };
+        Update: {
+          total_score?: number;
+          sessions_participated?: number;
+          best_session_score?: number;
+          average_session_score?: number;
+        };
+      };
     };
   };
 }
